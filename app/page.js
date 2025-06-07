@@ -5,6 +5,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const postmarkEmail = '1ec7cccf281e3ae5274b1ce1f0598e6d@inbound.postmarkapp.com';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -22,6 +24,12 @@ export default function LoginPage() {
     setError('');
     localStorage.setItem('userEmail', email);
     window.location.href = '/emails';
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(postmarkEmail);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -89,7 +97,38 @@ export default function LoginPage() {
               </div>
             </div>
             <ol className="mt-4 list-decimal list-inside space-y-2 text-gray-600 text-sm text-left">
-              <li>Forward emails to your designated Postmark inbound address.</li>
+              <li>
+                Forward emails to
+                <span className="inline-flex items-center ml-1 relative max-w-full">
+                  <span
+                    id="postmark-email"
+                    className="font-mono text-xs select-all bg-gray-100 px-2 py-1 rounded cursor-pointer truncate max-w-[180px] sm:max-w-xs md:max-w-sm lg:max-w-md"
+                    onClick={handleCopy}
+                    title="Click to copy"
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleCopy(); }}
+                    aria-label="Copy email address"
+                  >
+                    {postmarkEmail}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Copy email address"
+                    className="ml-1 text-gray-400 hover:text-indigo-600 focus:outline-none"
+                    onClick={handleCopy}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <rect x="9" y="9" width="13" height="13" rx="2" strokeWidth="2" stroke="currentColor" fill="none"/>
+                      <rect x="3" y="3" width="13" height="13" rx="2" strokeWidth="2" stroke="currentColor" fill="none"/>
+                    </svg>
+                  </button>
+                  {copied && (
+                    <span className="absolute -bottom-6 left-0 bg-indigo-600 text-white text-xs rounded px-2 py-1 shadow transition-opacity duration-200 animate-fade-in-out">
+                      Copied!
+                    </span>
+                  )}
+                </span>
+              </li>
               <li>Use the same email address you entered above to log in.</li>
               <li>Only you can see the emails you personally forward.</li>
               <li>Read your saved emails in a clean, reader-friendly format.</li>

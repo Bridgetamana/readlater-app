@@ -165,7 +165,7 @@ export default function EmailsDashboard() {
                         <Mail className="mx-auto h-16 w-16 text-gray-400" />
                         <h3 className="mt-4 text-2xl font-semibold text-gray-900">Your inbox is empty</h3>
                         <p className="mt-2 text-base text-gray-500">
-                            Forward emails to your dedicated address and they&apos;ll show up here.
+                            Forward or send emails to <b>1ec7cccf281e3ae5274b1ce1f0598e6d@inbound.postmarkapp.com</b> and they&apos;ll show up here.
                         </p>
                     </div>
                 ) : (

@@ -17,8 +17,8 @@ export default function EmailViewer({ email, onClose, onMarkRead, onDelete }) {
     if (!email) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-white bg-opacity-30 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-4xl h-[90vh] flex flex-col">
                 <header className="flex items-center justify-between p-4 border-b border-gray-200">
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-600">
                         <ArrowLeft size={20} />
