@@ -177,6 +177,41 @@ export default function EmailsDashboard() {
         fetchEmails();
     }, [fetchEmails]);
 
+    const handleMarkRead = useCallback(async (email) => {
+        try {
+            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ read: true })
+            });
+
+            if (res.ok) {
+                setEmails((prev) => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
+            } else {
+                console.error('Failed to mark email as read');
+            }
+        } catch (error) {
+            console.error('Error marking email as read:', error);
+        }
+    }, [userEmail]);
+
+    const handleDelete = useCallback(async (email) => {
+        try {
+            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                setEmails((prev) => prev.filter(e => e.id !== email.id));
+                setSelectedIndex(prev => Math.max(0, prev - 1));
+            } else {
+                console.error('Failed to delete email');
+            }
+        } catch (error) {
+            console.error('Error deleting email:', error);
+        }
+    }, [userEmail]);
+
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (viewingEmail) return;
@@ -209,45 +244,14 @@ export default function EmailsDashboard() {
                     }
                     break;
             }
-        }; document.addEventListener('keydown', handleKeyDown);
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [emails, selectedIndex, viewingEmail, handleMarkRead, handleDelete]);
     useEffect(() => {
         setSelectedIndex(0);
     }, [emails]);
-
-    const handleMarkRead = useCallback(async (email) => {
-        try {
-            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ read: true })
-            });
-
-            if (res.ok) {
-                setEmails((prev) => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
-            } else {
-                console.error('Failed to mark email as read');
-            }
-        } catch (error) {
-            console.error('Error marking email as read:', error);
-        }
-    }, [userEmail]); const handleDelete = useCallback(async (email) => {
-        try {
-            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                setEmails((prev) => prev.filter(e => e.id !== email.id));
-                setSelectedIndex(prev => Math.max(0, prev - 1));
-            } else {
-                console.error('Failed to delete email');
-            }
-        } catch (error) {
-            console.error('Error deleting email:', error);
-        }
-    }, [userEmail]);
 
     const handleLogout = () => {
         localStorage.removeItem('userEmail');
