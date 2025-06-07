@@ -2,6 +2,7 @@
 import EmailRow from './EmailRow';
 import EmailViewer from './EmailViewer';
 import { useEffect, useState, useCallback } from 'react';
+import { RotateCw, LogOut, Mail, Inbox, AlertTriangle } from 'lucide-react';
 
 export default function EmailsDashboard() {
     const [emails, setEmails] = useState([]);
@@ -21,7 +22,6 @@ export default function EmailsDashboard() {
 
     const fetchEmails = useCallback(async () => {
         if (!userEmail) return;
-
         try {
             setLoading(true);
             const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}`);
@@ -46,7 +46,6 @@ export default function EmailsDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ read: true })
             });
-
             if (res.ok) {
                 setEmails((prev) => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
             } else {
@@ -57,14 +56,16 @@ export default function EmailsDashboard() {
         }
     }, [userEmail]);
 
-    const handleDelete = useCallback(async (email) => {
+    const handleDelete = useCallback(async (emailToDelete) => {
         try {
-            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
+            const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${emailToDelete.id}`, {
                 method: 'DELETE'
             });
-
             if (res.ok) {
-                setEmails((prev) => prev.filter(e => e.id !== email.id));
+                setEmails((prev) => prev.filter(e => e.id !== emailToDelete.id));
+                if (viewingEmail && viewingEmail.id === emailToDelete.id) {
+                    setViewingEmail(null);
+                }
                 setSelectedIndex(prev => Math.max(0, prev - 1));
             } else {
                 console.error('Failed to delete email');
@@ -72,12 +73,11 @@ export default function EmailsDashboard() {
         } catch (error) {
             console.error('Error deleting email:', error);
         }
-    }, [userEmail]);
+    }, [userEmail, viewingEmail]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (viewingEmail) return;
-
             switch (e.key) {
                 case 'ArrowUp':
                     e.preventDefault();
@@ -93,12 +93,11 @@ export default function EmailsDashboard() {
                         setViewingEmail(emails[selectedIndex]);
                     }
                     break;
-                case ' ':
+                case 'r':
                     e.preventDefault();
-                    if (emails[selectedIndex] && !emails[selectedIndex].read) {
-                        handleMarkRead(emails[selectedIndex]);
-                    }
+                    fetchEmails();
                     break;
+                case 'Backspace':
                 case 'Delete':
                     e.preventDefault();
                     if (emails[selectedIndex]) {
@@ -107,13 +106,9 @@ export default function EmailsDashboard() {
                     break;
             }
         };
-
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [emails, selectedIndex, viewingEmail, handleMarkRead, handleDelete]);
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [emails]);
+    }, [emails, selectedIndex, viewingEmail, handleDelete, fetchEmails]);
 
     const handleLogout = () => {
         localStorage.removeItem('userEmail');
@@ -123,117 +118,78 @@ export default function EmailsDashboard() {
     const unreadCount = emails.filter(email => !email.read).length;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-6xl mx-auto p-6">
-                <div className="flex justify-between items-center mb-8">
-                    <div className="text-center flex-1">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">ReadLater Inbox</h1>
-                        <p className="text-gray-600 mb-4">
-                            Forward emails from <span className="font-medium text-blue-600">{userEmail}</span> to your Postmark address to save them here for later reading.
-                        </p>
-                        {emails.length > 0 && (
-                            <div className="flex justify-center gap-4">
-                                <span className="bg-white px-4 py-2 rounded-full text-sm text-gray-700 border">
-                                    {emails.length} total email{emails.length !== 1 ? 's' : ''}
-                                </span>
-                                {unreadCount > 0 && (
-                                    <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200">
-                                        {unreadCount} unread
-                                    </span>)}
-                            </div>
-                        )}
-
-                        {/* Keyboard navigation hints */}
-                        {emails.length > 0 && (
-                            <div className="text-center mt-4">
-                                <p className="text-xs text-gray-500">
-                                    Use ↑↓ to navigate • Enter to open • Space to mark read • Delete to remove • Esc to close
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={fetchEmails}
-                            disabled={loading}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
-                        >
-                            {loading ? 'Refreshing...' : 'Refresh'}
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    {loading ? (
-                        <div className="text-center py-16">
-                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-                            <p className="text-gray-600">Loading your emails...</p>
-                        </div>
-                    ) : error ? (
-                        <div className="text-center py-16">
-                            <p className="text-red-600 mb-4">Error loading emails: {error}</p>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
-                            >
-                                Try Again
-                            </button>
-                        </div>
-                    ) : emails.length === 0 ? (
-                        <div className="text-center py-16">
-                            <div className="text-6xl mb-4">📧</div>
-                            <h3 className="text-xl font-medium text-gray-900 mb-2">No emails yet</h3>
-                            <p className="text-gray-600">When you receive emails, they&apos;ll appear here in a clean table format.</p>
-                        </div>
-                    ) : (
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        From
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Subject
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Preview
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {emails.map((email, index) => (
-                                    <EmailRow
-                                        key={email.id}
-                                        email={email}
-                                        onMarkRead={handleMarkRead}
-                                        onDelete={handleDelete}
-                                        onViewFull={setViewingEmail}
-                                        isSelected={index === selectedIndex}
-                                    />
-                                ))}
-                            </tbody>
-                        </table>
+        <div className="min-h-screen bg-gray-50 text-gray-800">
+            <header className="flex items-center justify-between p-3 border-b border-gray-200 bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-4">
+                    <Inbox className="w-6 h-6 text-blue-600" />
+                    <h1 className="text-xl font-semibold text-gray-900">ReadLater Inbox</h1>
+                    {unreadCount > 0 && (
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {unreadCount} Unread
+                        </span>
                     )}
                 </div>
-            </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={fetchEmails}
+                        disabled={loading}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-600 disabled:opacity-50"
+                        aria-label="Refresh emails"
+                    >
+                        <RotateCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100 text-gray-600" aria-label="Logout">
+                        <LogOut className="h-5 w-5" />
+                    </button>
+                </div>
+            </header>
+            <main className="max-w-7xl mx-auto p-4">
+                {loading ? (
+                    <div className="text-center py-20">
+                        <RotateCw className="mx-auto h-10 w-10 text-blue-600 animate-spin" />
+                        <p className="mt-4 text-lg text-gray-600">Loading your emails...</p>
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-20 bg-red-50 p-8 rounded-lg">
+                        <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
+                        <p className="mt-4 text-xl font-semibold text-red-700">Error: {error}</p>
+                        <button
+                            onClick={fetchEmails}
+                            className="mt-6 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                ) : emails.length === 0 ? (
+                    <div className="text-center py-20">
+                        <Mail className="mx-auto h-16 w-16 text-gray-400" />
+                        <h3 className="mt-4 text-2xl font-semibold text-gray-900">Your inbox is empty</h3>
+                        <p className="mt-2 text-base text-gray-500">
+                            Forward emails to your dedicated address and they&apos;ll show up here.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <ul>
+                            {emails.map((email, index) => (
+                                <EmailRow
+                                    key={email.id}
+                                    email={email}
+                                    onSelect={setViewingEmail}
+                                    onDelete={handleDelete}
+                                    isSelected={index === selectedIndex}
+                                />
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </main>
             {viewingEmail && (
                 <EmailViewer
                     email={viewingEmail}
                     onClose={() => setViewingEmail(null)}
                     onMarkRead={handleMarkRead}
+                    onDelete={handleDelete}
                 />
             )}
         </div>

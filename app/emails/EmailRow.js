@@ -1,66 +1,47 @@
-export default function EmailRow({ email, onMarkRead, onDelete, onViewFull, isSelected }) {
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+import { Trash2 } from 'lucide-react';
 
-        if (diffDays === 0) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } else if (diffDays === 1) {
-            return 'Yesterday';
-        } else if (diffDays < 7) {
-            return `${diffDays} days ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
-    };
-
-    const truncateText = (text, maxLength = 50) => {
-        if (!text) return '';
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-    };
-
+export default function EmailRow({ email, onSelect, onDelete, isSelected }) {
+    const formattedDate = new Date(email.created_at || email.date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+    });
     return (
-        <tr className={`border-b hover:bg-gray-50 transition-colors ${!email.read ? 'bg-blue-50' : ''} ${isSelected ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}>
-            <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                    {!email.read && <div className="w-2 h-2 bg-blue-500 rounded-full"></div>}
-                    <span className="text-sm text-gray-600">{formatDate(email.date)}</span>
-                </div>
-            </td>
-            <td className="px-4 py-3">
-                <span className="text-sm font-medium text-gray-900">{email.from}</span>
-            </td>
-            <td className="px-4 py-3">
-                <span className="text-sm font-semibold text-gray-900">{email.subject}</span>
-            </td>
-            <td className="px-4 py-3">
-                <span className="text-sm text-gray-600">{truncateText(email.textBody || email.htmlBody)}</span>
-            </td>
-            <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => onViewFull(email)}
-                        className="px-3 py-1 text-xs rounded-md border transition-colors text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                        View
-                    </button>
-                    <button
-                        onClick={() => onMarkRead(email)}
-                        disabled={email.read}
-                        className="px-3 py-1 text-xs rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                        {email.read ? '✓' : 'Mark Read'}
-                    </button>
-                    <button
-                        onClick={() => onDelete(email)}
-                        className="px-2 py-1 text-xs rounded-md border transition-colors text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                        ×
-                    </button>
-                </div>
-            </td>
-        </tr>
+        <li
+            onClick={() => onSelect(email)}
+            className={`
+                flex items-center gap-4 px-4 py-3 border-b border-gray-200 cursor-pointer
+                transition-colors duration-150 ease-in-out group
+                ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}
+                ${!email.read ? 'font-semibold text-gray-900' : 'text-gray-600'}
+            `}
+        >
+            <div className={`w-2 h-2 rounded-full transition-opacity ${!email.read ? 'bg-blue-600' : 'bg-transparent'}`}></div>
+            <div className="flex-shrink-0 w-36 truncate">
+                {email.from_name || email.from || 'No Name'}
+            </div>
+            <div className="flex-grow truncate">
+                <span className={!email.read ? 'text-gray-800' : 'text-gray-700'}>
+                    {email.subject || 'No Subject'}
+                </span>
+                <span className="ml-2 font-normal text-gray-500 hidden md:inline">
+                    - {(email.text_body || email.textBody || '').substring(0, 50)}...
+                </span>
+            </div>
+            <div className="flex-shrink-0 w-20 text-right text-sm font-normal text-gray-500">
+                {formattedDate}
+            </div>
+            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={e => {
+                        e.stopPropagation();
+                        onDelete(email);
+                    }}
+                    className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                    aria-label="Delete email"
+                >
+                    <Trash2 size={18} />
+                </button>
+            </div>
+        </li>
     );
 }
