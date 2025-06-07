@@ -4,10 +4,14 @@
 
 - Forward emails to shared Postmark address
 - Private inboxes - users only see emails they forwarded
-- Mark emails as read/unread
+- Auto-mark emails as read when viewing
 - Delete emails
 - Full email viewer with HTML/text content
-- Responsive design with Tailwind CSS
+- Arrow keys (↑↓) to navigate email list
+- Enter to open selected email
+- Space to mark selected email as read
+- Delete key to remove selected email
+- Escape to close email viewer
 
 ## Setup
 
