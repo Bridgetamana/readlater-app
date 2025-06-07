@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 
-function EmailRow({ email, onMarkRead, onDelete, onViewFull }) {
+function EmailRow({ email, onMarkRead, onDelete, onViewFull, isSelected }) {
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -25,7 +25,9 @@ function EmailRow({ email, onMarkRead, onDelete, onViewFull }) {
     };
 
     return (
-        <tr className={`border-b hover:bg-gray-50 transition-colors ${!email.read ? 'bg-blue-50' : ''}`}>
+        <tr className={`border-b hover:bg-gray-50 transition-colors ${!email.read ? 'bg-blue-50' : ''
+            } ${isSelected ? 'ring-2 ring-blue-500 bg-blue-100' : ''
+            }`}>
             <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                     {!email.read && <div className="w-2 h-2 bg-blue-500 rounded-full"></div>}
@@ -68,7 +70,24 @@ function EmailRow({ email, onMarkRead, onDelete, onViewFull }) {
     );
 }
 
-function EmailViewer({ email, onClose }) {
+function EmailViewer({ email, onClose, onMarkRead }) {
+    useEffect(() => {
+        if (email && !email.read && onMarkRead) {
+            onMarkRead(email);
+        }
+    }, [email, onMarkRead]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     if (!email) return null;
 
     return (
@@ -128,7 +147,9 @@ export default function EmailsDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [userEmail, setUserEmail] = useState(null);
-    const [viewingEmail, setViewingEmail] = useState(null); useEffect(() => {
+    const [viewingEmail, setViewingEmail] = useState(null);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    useEffect(() => {
         const storedEmail = localStorage.getItem('userEmail');
         if (!storedEmail) {
             window.location.href = '/';
@@ -152,13 +173,50 @@ export default function EmailsDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [userEmail]);
-
-    useEffect(() => {
+    }, [userEmail]); useEffect(() => {
         fetchEmails();
     }, [fetchEmails]);
 
-    const handleMarkRead = async (email) => {
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (viewingEmail) return;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.max(0, prev - 1));
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.min(emails.length - 1, prev + 1));
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (emails[selectedIndex]) {
+                        setViewingEmail(emails[selectedIndex]);
+                    }
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (emails[selectedIndex] && !emails[selectedIndex].read) {
+                        handleMarkRead(emails[selectedIndex]);
+                    }
+                    break;
+                case 'Delete':
+                    e.preventDefault();
+                    if (emails[selectedIndex]) {
+                        handleDelete(emails[selectedIndex]);
+                    }
+                    break;
+            }
+        }; document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [emails, selectedIndex, viewingEmail, handleMarkRead, handleDelete]);
+    useEffect(() => {
+        setSelectedIndex(0);
+    }, [emails]);
+
+    const handleMarkRead = useCallback(async (email) => {
         try {
             const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
                 method: 'PUT',
@@ -174,9 +232,7 @@ export default function EmailsDashboard() {
         } catch (error) {
             console.error('Error marking email as read:', error);
         }
-    };
-
-    const handleDelete = async (email) => {
+    }, [userEmail]); const handleDelete = useCallback(async (email) => {
         try {
             const res = await fetch(`/api/inbound-email?user=${encodeURIComponent(userEmail)}&id=${email.id}`, {
                 method: 'DELETE'
@@ -184,13 +240,14 @@ export default function EmailsDashboard() {
 
             if (res.ok) {
                 setEmails((prev) => prev.filter(e => e.id !== email.id));
+                setSelectedIndex(prev => Math.max(0, prev - 1));
             } else {
                 console.error('Failed to delete email');
             }
         } catch (error) {
             console.error('Error deleting email:', error);
         }
-    };
+    }, [userEmail]);
 
     const handleLogout = () => {
         localStorage.removeItem('userEmail');
@@ -215,11 +272,21 @@ export default function EmailsDashboard() {
                             {unreadCount > 0 && (
                                 <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium border border-blue-200">
                                     {unreadCount} unread
-                                </span>
-                            )}
+                                </span>)}
                         </div>
                     )}
-                </div>                    <div className="flex gap-2">
+
+                    {/* Keyboard navigation hints */}
+                    {emails.length > 0 && (
+                        <div className="text-center mt-4">
+                            <p className="text-xs text-gray-500">
+                                Use ↑↓ to navigate • Enter to open • Space to mark read • Delete to remove • Esc to close
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex gap-2">
                     <button
                         onClick={fetchEmails}
                         disabled={loading}
@@ -279,24 +346,27 @@ export default function EmailsDashboard() {
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">                                {emails.map((email) => (
-                            <EmailRow
-                                key={email.id}
-                                email={email}
-                                onMarkRead={handleMarkRead}
-                                onDelete={handleDelete}
-                                onViewFull={setViewingEmail}
-                            />
-                        ))}
-                        </tbody>                        </table>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {emails.map((email, index) => (
+                                <EmailRow
+                                    key={email.id}
+                                    email={email}
+                                    onMarkRead={handleMarkRead}
+                                    onDelete={handleDelete}
+                                    onViewFull={setViewingEmail}
+                                    isSelected={index === selectedIndex}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
                 )}
             </div>
         </div>
-
         {viewingEmail && (
             <EmailViewer
                 email={viewingEmail}
                 onClose={() => setViewingEmail(null)}
+                onMarkRead={handleMarkRead}
             />
         )}
     </div>
